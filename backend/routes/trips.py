@@ -1,7 +1,12 @@
 from flask import Blueprint, jsonify, request
 
 from database import get_db
-from models import TRIP_STATUSES, find_trip, trip_to_dict
+from models import (
+    TRIP_STATUSES,
+    count_activities_outside_dates,
+    find_trip,
+    trip_to_dict,
+)
 from validation import parse_id, validate_trip
 
 bp = Blueprint("trips", __name__, url_prefix="/api/trips")
@@ -68,13 +73,10 @@ def update_trip(trip_id):
     if error:
         return jsonify(error=error), 400
 
-    db = get_db()
-    outside_dates = db.execute(
-        "SELECT COUNT(*) FROM activities WHERE trip_id = ? AND (date < ? OR date > ?)",
-        (trip_id, trip["start_date"], trip["end_date"]),
-    ).fetchone()[0]
-    if outside_dates:
+    if count_activities_outside_dates(trip_id, trip["start_date"], trip["end_date"]) > 0:
         return jsonify(error="Some activities fall outside the new trip dates. Edit or delete them first"), 400
+
+    db = get_db()
 
     db.execute(
         """UPDATE trips SET name = :name, destination = :destination, start_date = :start_date,

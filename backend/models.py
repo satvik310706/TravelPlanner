@@ -26,3 +26,11 @@ def find_trip(trip_id):
 
 def find_activity(activity_id):
     return get_db().execute("SELECT * FROM activities WHERE id = ?", (activity_id,)).fetchone()
+
+
+def count_activities_outside_dates(trip_id, start_date, end_date):
+    row = get_db().execute(
+        "SELECT COUNT(*) FROM activities WHERE trip_id = ? AND (date < ? OR date > ?)",
+        (trip_id, start_date, end_date),
+    ).fetchone()
+    return row[0]

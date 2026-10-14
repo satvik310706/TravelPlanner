@@ -131,6 +131,21 @@ def test_update_trip_dates_cannot_leave_activities_outside(client, trip, activit
     assert client.get(f"/api/trips/{trip['id']}").get_json()["start_date"] == "2026-11-10"
 
 
+def test_update_trip_end_date_cannot_exclude_later_activities(client, trip):
+    # Add an activity on 2026-11-13 (near the end of the trip)
+    client.post(f"/api/trips/{trip['id']}/activities", json={
+        "title": "Farewell Dinner",
+        "date": "2026-11-13",
+    })
+    # Attempt to shrink the trip end date to 2026-11-12
+    data = trip_data(start_date="2026-11-10", end_date="2026-11-12")
+    response = client.put(f"/api/trips/{trip['id']}", json=data)
+    assert response.status_code == 400
+    assert "activities fall outside" in response.get_json()["error"]
+    # Ensure end date was NOT modified in the database
+    assert client.get(f"/api/trips/{trip['id']}").get_json()["end_date"] == "2026-11-14"
+
+
 def test_update_trip_dates_allowed_when_activities_still_fit(client, trip, activity):
     wider = trip_data(start_date="2026-11-01", end_date="2026-11-30")
     assert client.put(f"/api/trips/{trip['id']}", json=wider).status_code == 200
